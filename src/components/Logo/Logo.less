@@ -1,0 +1,18 @@
+@import "../../style/variables.less";
+
+.uc-logo {
+  .desktop {
+    display: none;
+  }
+}
+
+@media (min-width: @dekstop-min-width) {
+  .uc-logo {
+    .desktop {
+      display: inherit;
+    }
+    .tablet {
+      display: none;
+    }
+  }
+}

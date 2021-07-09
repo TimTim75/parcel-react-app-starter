@@ -1,0 +1,187 @@
+version: 1
+jobs:
+  test:
+    environment:
+      NODE_ENV: test
+    docker:
+      - image: circleci/node:12
+        auth:
+          username: $DOCKERHUB_LOGIN
+          password: $DOCKERHUB_PWD
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "e2:dc:73:6f:58:24:de:52:58:0f:29:05:ad:80:74:5f"
+      - checkout
+      - restore_cache:
+          keys:
+            - v2-dependencies-{{ checksum "yarn.lock" }}
+            - v2-dependencies-
+      - run: yarn install
+      - save_cache:
+          paths:
+            - node_modules
+          key: v2-dependencies-{{ checksum "yarn.lock" }}
+      - run:
+          name: "Run specs"
+          command: yarn test
+      - run:
+          name: "Run linter"
+          command: yarn lint
+
+  build_and_deploy:
+    docker:
+      - image: google/cloud-sdk:alpine
+        auth:
+          username: $DOCKERHUB_LOGIN
+          password: $DOCKERHUB_PWD
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "e2:dc:73:6f:58:24:de:52:58:0f:29:05:ad:80:74:5f"
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: true
+      - run:
+          name: "Install base dependencies"
+          command: |
+            apk add make docker
+            gcloud components install kubectl --quiet
+      - run:
+          name: "Configure gcloud"
+          command: |
+            echo $GCLOUD_SERVICE_KEY | base64 -d > ${HOME}/gcloud-service-key.json
+            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+            gcloud --quiet config set project ${GCLOUD_PROJECT_ID}
+            gcloud --quiet config set compute/zone europe-west1-b
+            gcloud --quiet container clusters get-credentials ${GCLOUD_CLUSTER_NAME}
+      - run:
+          name: "Build Docker container"
+          command: |
+            if [[ "$CONTEXT" == "staging" ]]; then
+              make docker GITHUB_TOKEN=$GITHUB_TOKEN GCLOUD_PROJECT_ID=$GCLOUD_PROJECT_ID VERSION=$CIRCLE_SHA1 ssh_key=~/.ssh/id_rsa_e2dc736f5824de52580f2905ad80745f
+            else
+              make docker GITHUB_TOKEN=$GITHUB_TOKEN GCLOUD_PROJECT_ID=$GCLOUD_PROJECT_ID ssh_key=~/.ssh/id_rsa_e2dc736f5824de52580f2905ad80745f
+            fi
+      - run:
+          name: "Deploy container to Kubernetes"
+          command: |
+            if [[ "$CONTEXT" == "staging" ]]; then
+              make deploy GCLOUD_PROJECT_ID=$GCLOUD_PROJECT_ID VERSION=$CIRCLE_SHA1
+            else
+              make deploy GCLOUD_PROJECT_ID=$GCLOUD_PROJECT_ID
+            fi
+
+  deploy_prod:
+    docker:
+      - image: google/cloud-sdk:alpine
+        auth:
+          username: $DOCKERHUB_LOGIN
+          password: $DOCKERHUB_PWD
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: "Install base dependencies"
+          command: |
+            apk add make docker
+            gcloud components install kubectl --quiet
+      - run:
+          name: "Configure preprod gcloud"
+          command: |
+            echo $GCLOUD_SERVICE_KEY_PREPROD | base64 -d > ${HOME}/gcloud-service-key.json
+            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+            gcloud --quiet config set project ${GCLOUD_PROJECT_ID_PREPROD}
+      - run:
+          name: "Pull preprod image"
+          command: make pull-preprod GCLOUD_PROJECT_ID_PREPROD=$GCLOUD_PROJECT_ID_PREPROD
+      - run:
+          name: "Configure gcloud"
+          command: |
+            echo $GCLOUD_SERVICE_KEY | base64 -d > ${HOME}/gcloud-service-key.json
+            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+            gcloud --quiet config set project ${GCLOUD_PROJECT_ID}
+            gcloud --quiet config set compute/zone europe-west1-b
+            gcloud --quiet container clusters get-credentials ${GCLOUD_CLUSTER_NAME}
+      - run:
+          name: "Deploy container to Kubernetes"
+          command: make deploy-prod GCLOUD_PROJECT_ID=$GCLOUD_PROJECT_ID GCLOUD_PROJECT_ID_PREPROD=$GCLOUD_PROJECT_ID_PREPROD
+
+  create_release:
+    docker:
+      - image: circleci/node:13
+        auth:
+          username: $DOCKERHUB_LOGIN
+          password: $DOCKERHUB_PWD
+    working_directory: ~/repo
+    environment:
+      SENTRY_ORG: urban-campus
+      SENTRY_PROJECT: app-admin
+    steps:
+      - checkout
+      - run:
+          name: "Install Sentry cli"
+          command: curl -sL https://sentry.io/get-cli/ | bash
+      - run:
+          name: "Create new release on Sentry"
+          command: |
+            export SENTRY_RELEASE="v$(cat VERSION)"
+            sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
+            sentry-cli releases set-commits --auto $SENTRY_RELEASE
+            sentry-cli releases finalize $SENTRY_RELEASE
+
+workflows:
+  version: 2
+  dev-cd:
+    jobs:
+      - test:
+          context: staging
+          filters:
+            branches:
+              ignore: master
+
+  staging-cd:
+    jobs:
+      - test:
+          context: staging
+          filters:
+            branches:
+              only: master
+      - build_and_deploy:
+          context: staging
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+
+  preprod-cd:
+    jobs:
+      - build_and_deploy:
+          context: preprod
+          filters:
+            tags:
+              only: preprod
+            branches:
+              ignore: /.*/
+      - create_release:
+          context: preprod
+          requires:
+            - build_and_deploy
+          filters:
+            tags:
+              only: preprod
+            branches:
+              ignore: /.*/
+
+  prod-cd:
+    jobs:
+      - deploy_prod:
+          context: production
+          filters:
+            tags:
+              only: prod
+            branches:
+              ignore: /.*/

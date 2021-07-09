@@ -1,0 +1,16 @@
+{
+  "extends": [
+    "stylelint-config-airbnb",
+    "@modyqyw/stylelint-config/less"
+  ],
+  "ignoreFiles": ["**/*.(jsx|js)"],
+  "rules": {
+    "color-hex-length": "long",
+    "max-nesting-depth": null,
+    "selector-max-class": null,
+    "selector-max-combinators": null,
+    "selector-max-compound-selectors": null,
+    "selector-max-type": null,
+    "selector-no-qualifying-type": [true, { "ignore": ["class"]}]
+  }
+}

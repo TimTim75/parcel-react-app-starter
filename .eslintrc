@@ -1,0 +1,62 @@
+{
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true,
+      "modules": true,
+      "experimentalObjectRestSpread": true
+    }
+  },
+  "env": {
+    "jest": true,
+    "browser": true,
+    "node": true
+  },
+  "extends": [
+    "airbnb",
+    "airbnb/hooks"
+  ],
+  "globals": {
+    "mockIntl": true
+  },
+  "rules": {
+    "arrow-parens": ["error", "as-needed"],
+    "camelcase": ["error", {"properties": "never", "ignoreDestructuring": true}],
+    "class-methods-use-this": [0],
+    "import/named": [0],
+    "indent": ["error", 2, { "MemberExpression": 0, "SwitchCase": 1 }],
+    "max-len": ["error", {"code": 120, "ignoreStrings": true, "ignoreUrls": true}],
+    "no-console": [2, { "allow": ["warn", "error"] }],
+    "no-nested-ternary": [0],
+    "no-plusplus": [0],
+    "no-shadow": ["error", { "allow": ["loading", "error", "data"] }],
+    "object-curly-newline": ["error", { "consistent": true }],
+    "semi": [2, "never"],
+    "import/prefer-default-export": 0,
+    "jsx-a11y/anchor-is-valid": 0,
+    "react/button-has-type": [0],
+    "react/forbid-prop-types": [0],
+    "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
+    "react/jsx-fragments": [0],
+    "react/no-array-index-key": [0],
+    "react/style-prop-object": ["error", {"allow": ["FormattedNumber"]}]
+  },
+  "overrides": [{
+      "files": ["src/**/*.spec.jsx"],
+      "rules": {
+        "react/jsx-props-no-spreading": 0
+      }
+    }
+  ]
+}

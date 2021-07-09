@@ -1,0 +1,15 @@
+query GetUser {
+  me {
+    uuid
+    email
+    firstName
+    lastName
+    emailVerifiedAt
+    bookingSteps
+    roles
+    profiles {
+      id
+      avatarUrl
+    }
+  }
+}

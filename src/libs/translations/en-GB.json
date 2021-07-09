@@ -1,0 +1,12 @@
+{
+  "HELLO_WORLD_TITLE": "Hello world",
+  "HELLO_WORLD_RATE_SENTENCE": "Current rate for {currency} is {rate} in USD",
+  "LOGIN_TITLE": "Welcome on Urbancampus Admin app",
+  "LOGIN_FORM_TITLE": "Please login",
+  "LOGIN_FORM_EMAIL_LABEL": "Email",
+  "LOGIN_FORM_PASSWORD_LABEL": "Password",
+  "LOGIN_FORM_BUTTON": "Login",
+  "LOGIN_FORM_ERROR_EMAIL_PASSWORD": "Wrong email or password",
+  "LOGIN_FORM_ERROR_NOT_ADMIN": "Your account does not have admin rights",
+  "DEFAULT_ERROR": "An error occured"
+}
